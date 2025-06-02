@@ -3,135 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Energia</title>
+  <title>Dashboard ESP32 + PZEM</title>
   <style>
     body {
-      margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background:#111; color:#eee; display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      grid-auto-rows: 1fr;
-      gap: 12px; height: 100vh; box-sizing: border-box;
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      padding: 20px;
     }
     .gauge {
       background: #222;
-      border-radius: 12px;
-      padding: 15px;
-      display: flex; flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 15px #0ff8;
-    }
-    svg {
-      width: 100%;
-      height: auto;
-      max-width: 200px;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #0ff8;
+      text-align: center;
     }
     .label {
-      margin-top: 12px;
-      font-size: 1.1rem;
-      text-align: center;
-      user-select: none;
+      font-size: 1.2em;
+      margin-bottom: 8px;
     }
     .value {
-      font-size: 2rem;
+      font-size: 2em;
       font-weight: bold;
-      margin-top: 6px;
     }
   </style>
 </head>
 <body>
 
-  <div class="gauge" id="voltage">
-    <svg viewBox="0 0 100 60" >
-      <path fill="none" stroke="#0ff" stroke-width="8" d="M10 50 A40 40 0 0 1 90 50" />
-      <line id="voltage-needle" x1="50" y1="50" x2="50" y2="15" stroke="#0ff" stroke-width="3" />
-      <text x="50" y="58" fill="#0ff" font-size="8" text-anchor="middle">0</text>
-      <text x="90" y="58" fill="#0ff" font-size="8" text-anchor="middle">300V</text>
-    </svg>
-    <div class="label">Tensão (V)</div>
-    <div class="value" id="voltage-value">--</div>
-  </div>
+  <div class="gauge"><div class="label">Tensão (V)</div><div id="voltage" class="value">--</div></div>
+  <div class="gauge"><div class="label">Corrente (A)</div><div id="current" class="value">--</div></div>
+  <div class="gauge"><div class="label">Potência (W)</div><div id="power" class="value">--</div></div>
+  <div class="gauge"><div class="label">Energia (kWh)</div><div id="energy" class="value">--</div></div>
+  <div class="gauge"><div class="label">Fator de Potência</div><div id="pf" class="value">--</div></div>
 
-  <div class="gauge" id="current">
-    <svg viewBox="0 0 100 60" >
-      <path fill="none" stroke="#0f0" stroke-width="8" d="M10 50 A40 40 0 0 1 90 50" />
-      <line id="current-needle" x1="50" y1="50" x2="50" y2="15" stroke="#0f0" stroke-width="3" />
-      <text x="50" y="58" fill="#0f0" font-size="8" text-anchor="middle">0</text>
-      <text x="90" y="58" fill="#0f0" font-size="8" text-anchor="middle">100A</text>
-    </svg>
-    <div class="label">Corrente (A)</div>
-    <div class="value" id="current-value">--</div>
-  </div>
+  <script>
+    const url = "https://medicaoremota-f25eb-default-rtdb.firebaseio.com/medicoes.json";
 
-  <div class="gauge" id="power">
-    <svg viewBox="0 0 100 60" >
-      <path fill="none" stroke="#ff0" stroke-width="8" d="M10 50 A40 40 0 0 1 90 50" />
-      <line id="power-needle" x1="50" y1="50" x2="50" y2="15" stroke="#ff0" stroke-width="3" />
-      <text x="50" y="58" fill="#ff0" font-size="8" text-anchor="middle">0</text>
-      <text x="90" y="58" fill="#ff0" font-size="8" text-anchor="middle">6600W</text>
-    </svg>
-    <div class="label">Potência (W)</div>
-    <div class="value" id="power-value">--</div>
-  </div>
-
-  <div class="gauge" id="energy">
-    <svg viewBox="0 0 100 60" >
-      <path fill="none" stroke="#f0f" stroke-width="8" d="M10 50 A40 40 0 0 1 90 50" />
-      <line id="energy-needle" x1="50" y1="50" x2="50" y2="15" stroke="#f0f" stroke-width="3" />
-      <text x="50" y="58" fill="#f0f" font-size="8" text-anchor="middle">0</text>
-      <text x="90" y="58" fill="#f0f" font-size="8" text-anchor="middle">9999kWh</text>
-    </svg>
-    <div class="label">Energia (kWh)</div>
-    <div class="value" id="energy-value">--</div>
-  </div>
-
-  <div class="gauge" id="pf">
-    <svg viewBox="0 0 100 60" >
-      <path fill="none" stroke="#0af" stroke-width="8" d="M10 50 A40 40 0 0 1 90 50" />
-      <line id="pf-needle" x1="50" y1="50" x2="50" y2="15" stroke="#0af" stroke-width="3" />
-      <text x="50" y="58" fill="#0af" font-size="8" text-anchor="middle">0</text>
-      <text x="90" y="58" fill="#0af" font-size="8" text-anchor="middle">1.0</text>
-    </svg>
-    <div class="label">Fator de Potência</div>
-    <div class="value" id="pf-value">--</div>
-  </div>
-
-<script>
-  function valueToAngle(value, max) {
-    if(value < 0) value = 0;
-    if(value > max) value = max;
-    return (value / max) * Math.PI;
-  }
-
-  function updateGauge(id, value, max) {
-    const angle = valueToAngle(value, max);
-    const x = 50 + 40 * Math.cos(Math.PI - angle);
-    const y = 50 - 40 * Math.sin(Math.PI - angle);
-    document.querySelector(`#${id}-needle`).setAttribute('x2', x);
-    document.querySelector(`#${id}-needle`).setAttribute('y2', y);
-    document.getElementById(`${id}-value`).textContent = value.toFixed(2);
-  }
-
-  async function fetchData() {
-    try {
-      const response = await fetch("https://https://medicaoremota-f25eb-default-rtdb.firebaseio.com//medicoes.json"); // substitua
-      if (!response.ok) throw new Error("Erro ao buscar Firebase");
-      const data = await response.json();
-
-      updateGauge("voltage", data.voltage, 300);
-      updateGauge("current", data.current, 100);
-      updateGauge("power", data.power, 6600);
-      updateGauge("energy", data.energy, 9999);
-      updateGauge("pf", data.pf, 1.0);
-
-    } catch (err) {
-      console.error("Erro:", err);
+    async function fetchData() {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        document.getElementById("voltage").textContent = data.voltage.toFixed(2);
+        document.getElementById("current").textContent = data.current.toFixed(2);
+        document.getElementById("power").textContent   = data.power.toFixed(2);
+        document.getElementById("energy").textContent  = data.energy.toFixed(2);
+        document.getElementById("pf").textContent      = data.pf.toFixed(2);
+      } catch (e) {
+        console.error("Erro ao buscar dados", e);
+      }
     }
-  }
 
-  setInterval(fetchData, 2000);
-  fetchData();
-</script>
-
+    setInterval(fetchData, 2000);
+    fetchData();
+  </script>
 </body>
 </html>
